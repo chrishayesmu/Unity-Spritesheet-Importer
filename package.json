@@ -1,0 +1,21 @@
+{
+  "name": "com.chrishayesmu.spritesheet-importer",
+  "version": "0.1.1",
+  "displayName": "Spritesheet Importer",
+  "description": "An automated spritesheet importer, for use with images exported by https://github.com/chrishayesmu/Blender-Spritesheet-Renderer",
+  "dependencies": {
+	"com.unity.settings-manager": "1.0.1"
+  },
+  "unity": "2018.4",
+  "keywords": [
+	"2d",
+	"animation",
+    "spritesheet",
+    "sprite",
+    "blender"
+  ],
+  "author": {
+    "name": "Chris Hayes",
+    "url": "https://github.com/chrishayesmu/Unity-Spritesheet-Importer"
+  }
+}
