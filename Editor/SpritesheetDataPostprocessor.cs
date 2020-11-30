@@ -19,6 +19,7 @@ namespace SpritesheetImporter {
             SpritesheetData data = FindSpritesheetData(assetPath);
 
             if (data == null) {
+                Log($"Asset path \"{assetPath}\" is not referenced by any .ssdata file in the same directory", LogLevel.Verbose);
                 return;
             }
 
@@ -28,10 +29,12 @@ namespace SpritesheetImporter {
 
             if (material != null) {
                 if (!SpritesheetImporterSettings.sliceSecondaryTextures && material.IsSecondaryTexture) {
+                    Log($"Asset \"{assetPath}\" is a secondary texture and slicing of secondary textures is disabled; no action taken", LogLevel.Verbose);
                     return;
                 }
 
                 if (!SpritesheetImporterSettings.sliceUnidentifiedTextures && material.IsUnidentifiedTexture) {
+                    Log($"Asset \"{assetPath}\" is an unidentified texture and slicing of unidentified textures is disabled; no action taken", LogLevel.Verbose);
                     return;
                 }
             }
@@ -43,15 +46,19 @@ namespace SpritesheetImporter {
 
             foreach (SpritesheetStillData still in data.stills) {
                 string name = data.baseObjectName + "_" + still.frame;
+                Log($"Creating sprite still for frame {still.frame} with sprite name {name}", LogLevel.Verbose);
                 subsprites.Add(CreateSpriteMetaData(still.frame, data, FormatAssetName(name)));
             }
 
             foreach (SpritesheetAnimationData animation in data.animations) {
                 for (int i = animation.startFrame; i < animation.startFrame + animation.numFrames; i++) {
                     string name = data.baseObjectName + "_" + animation.name + "_rot" + animation.rotation + "_" + (i - animation.startFrame);
+                    Log($"Creating sprite slice for animation frame {i} with sprite name {name}", LogLevel.Verbose);
                     subsprites.Add(CreateSpriteMetaData(i, data, FormatAssetName(name)));
                 }
             }
+
+            Log($"Asset \"{assetPath}\" has been sliced into {subsprites.Count} sprites", LogLevel.Info);
 
             if (subsprites.Count > 1) {
                 importer.spriteImportMode = SpriteImportMode.Multiple;
@@ -60,6 +67,11 @@ namespace SpritesheetImporter {
         }
 
         static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths) {
+            if (SpritesheetImporterSettings.placeAnimationsInSubfolders && string.IsNullOrWhiteSpace(SpritesheetImporterSettings.animationSubfolderNameFormat)) {
+                Log("Unable to process assets because the \"Subfolder Name Format\" project setting is blank", LogLevel.Error);
+                return;
+            }
+
             List<string> processedSpritesheets = new List<string>();
 
             foreach (string assetPath in importedAssets) {
@@ -83,9 +95,16 @@ namespace SpritesheetImporter {
 
                 // When loading in several images that represent a texture and its secondary textures, we want to avoid
                 // repeating work, so we only process each spritesheet data file once per import
-                if (spritesheetData == null || processedSpritesheets.Contains(spritesheetData.dataFilePath)) {
+                if (spritesheetData == null) {
                     continue;
                 }
+
+                if (processedSpritesheets.Contains(spritesheetData.dataFilePath)) {
+                    Log($"Spritesheet at path \"{spritesheetData.dataFilePath} has already been processed in this import operation; skipping", LogLevel.Verbose);
+                    continue;
+                }
+
+                string successMessage = $"Import of assets referenced in \"{spritesheetData.dataFilePath}\" completed successfully. ";
 
                 #region Set up secondary textures
 #if SECONDARY_TEXTURES_AVAILABLE
@@ -109,13 +128,16 @@ namespace SpritesheetImporter {
                     }
 
                     if (otherMaterials.Length > 0) {
-                        Debug.LogWarning($"Data file {spritesheetData.dataFilePath} references {otherMaterials.Length} materials of unknown purpose. These will need to be configured manually.");
+                        Log($"Data file {spritesheetData.dataFilePath} references {otherMaterials.Length} materials of unknown purpose. These will need to be configured manually.", LogLevel.Warning);
                     }
                     #endregion
 
                     SpritesheetMaterialData albedo = albedoMaterials[0];
                     SpritesheetMaterialData mask = maskMaterials.Length > 0 ? maskMaterials[0] : null;
                     SpritesheetMaterialData normal = normalMaterials.Length > 0 ? normalMaterials[0] : null;
+
+                    Log($"Asset has mask material texture: {mask != null}", LogLevel.Verbose);
+                    Log($"Asset has normal material texture: {normal != null}", LogLevel.Verbose);
 
                     #region Create secondary textures
                     List<SecondarySpriteTexture> secondarySpriteTextures = new List<SecondarySpriteTexture>();
@@ -156,18 +178,25 @@ namespace SpritesheetImporter {
                     #endregion
 
                     if (importSettingsChanged) {
+                        Log("A change has occurred in the secondary textures; triggering a reimport", LogLevel.Verbose);
                         albedoTextureImporter.secondarySpriteTextures = secondarySpriteTextures.ToArray();
                         albedoTextureImporter.SaveAndReimport();
                     }
+
+                    successMessage += $"Configured {secondarySpriteTextures.Count} secondary textures. ";
                 }
 #endif
                 #endregion
 
                 #region Create/update animations
                 if (SpritesheetImporterSettings.createAnimations && spritesheetData.animations.Count > 0) {
+                    Log($"Going to create or replace {spritesheetData.animations.Count} animation clips for data file at \"{spritesheetData.dataFilePath}\"", LogLevel.Verbose);
+
                     string mainImageAssetPath = GetMainImagePath(spritesheetData);
                     string assetDirectory = Path.GetDirectoryName(mainImageAssetPath);
                     UnityEngine.Object[] sprites = AssetDatabase.LoadAllAssetRepresentationsAtPath(mainImageAssetPath);
+
+                    Log($"Loaded {sprites.Length} sprites from main image asset path \"{mainImageAssetPath}\"", LogLevel.Verbose);
 
                     foreach (var animationData in spritesheetData.animations) {
                         bool multipleAnimationsFromSameSource = spritesheetData.animations.Where(anim => anim.name == animationData.name).Count() > 1;
@@ -183,18 +212,25 @@ namespace SpritesheetImporter {
                                 .Replace("{obj}", FormatAssetName(spritesheetData.baseObjectName));
 
                             clipPath = Path.Combine(clipPath, subfolderName);
+                            Log($"Creating subfolder at \"{clipPath}\" to contain animations named \"{animationData.name}\"", LogLevel.Verbose);
                             Directory.CreateDirectory(clipPath);
                         }
 
                         clipPath = Path.Combine(clipPath, clipName);
-
                         AnimationClip clip = CreateAnimationClip(spritesheetData, animationData, sprites);
+
+                        Log($"Animation clip saving at path \"{clipPath}\"", LogLevel.Verbose);
                         AssetDatabase.CreateAsset(clip, clipPath);
                     }
 
+                    Log("Done creating/replacing animation assets; now saving asset database", LogLevel.Verbose);
                     AssetDatabase.SaveAssets();
+
+                    successMessage += $"Created or updated {spritesheetData.animations.Count} animation clips. ";
                 }
                 #endregion
+
+                Log(successMessage, LogLevel.Info);
             }
         }
 
@@ -202,6 +238,8 @@ namespace SpritesheetImporter {
             AnimationClip clip = new AnimationClip {
                 frameRate = animationData.frameRate
             };
+
+            Log($"Creating animation clip with frame rate {animationData.frameRate} and {animationData.numFrames} total frames", LogLevel.Verbose);
 
             EditorCurveBinding spriteBinding = new EditorCurveBinding {
                 type = typeof(SpriteRenderer),
@@ -240,14 +278,17 @@ namespace SpritesheetImporter {
                     textureName = "_NormalMap";
                     break;
                 default:
+                    Log($"Material role {materialData.MaterialRole} is unrecognized and the associated image won't be processed", LogLevel.Warning);
                     return null;
             }
+
+            Log($"Material \"{materialData.name}\" with role {materialData.role} will have the secondary texture name \"{textureName}\"", LogLevel.Verbose);
 
             string secondaryTexturePath = Path.Combine(Path.GetDirectoryName(dataAssetPath), materialData.file);
             Texture2D secondaryTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(secondaryTexturePath);
 
             if (secondaryTexture == null) {
-                throw new InvalidOperationException($"Expected to find a secondary texture for {dataAssetPath} at asset path {secondaryTexturePath} based on .ssdata file");
+                throw new InvalidOperationException($"Expected to find a secondary texture at asset path \"{secondaryTexturePath}\" based on .ssdata file at \"{dataAssetPath}\"");
             }
 
             return new SecondarySpriteTexture {
@@ -267,6 +308,8 @@ namespace SpritesheetImporter {
             // and Unity's both start on the left, we don't care about the horizontal padding.
             Rect spriteRect = new Rect(data.spriteWidth * column, data.paddingHeight + data.spriteHeight * row, data.spriteWidth, data.spriteHeight);
 
+            Log($"Frame {frame} ({name}) is in row {row} and column {column} (Unity coordinates); its subrect is {spriteRect}", LogLevel.Verbose);
+
             return new SpriteMetaData() {
                 alignment = (int) SpriteAlignment.Center,
                 border = Vector4.zero,
@@ -284,25 +327,30 @@ namespace SpritesheetImporter {
         /// <returns>Loaded spritesheet data if any is found in the same directory, else null.</returns>
         /// <exception cref="InvalidOperationException">If multiple .ssdata files reference the given asset.</exception>
         private static SpritesheetData FindSpritesheetData(string imageAssetPath) {
+            Log($"Searching for .ssdata files referencing the image asset \"{imageAssetPath}\"", LogLevel.Verbose);
+
             // Check out all .ssdata files in the same directory and try to find one referencing this asset
             string assetDirectory = Path.GetDirectoryName(imageAssetPath);
             string assetFileName = Path.GetFileName(imageAssetPath);
 
             string[] paths = Directory.GetFiles(assetDirectory, "*.ssdata", SearchOption.TopDirectoryOnly);
+            Log($"There are {paths.Length} .ssdata files in the image asset directory", LogLevel.Verbose);
+
             List<SpritesheetData> matchingSpritesheetData = new List<SpritesheetData>();
 
             foreach (string path in paths) {
                 SpritesheetData dataObj = LoadSpritesheetDataFile(path);
 
                 if (dataObj.imageFile == assetFileName) {
+                    Log($"Data file {path} references image asset via imageFile field", LogLevel.Verbose);
                     matchingSpritesheetData.Add(dataObj);
                     continue;
                 }
 
                 foreach (SpritesheetMaterialData material in dataObj.materialData) {
                     if (material.file == assetFileName) {
+                        Log($"Data file {path} references image asset via a material", LogLevel.Verbose);
                         matchingSpritesheetData.Add(dataObj);
-                        continue;
                     }
                 }
             }
@@ -310,14 +358,17 @@ namespace SpritesheetImporter {
             if (matchingSpritesheetData.Count > 1) {
                 string allPaths = string.Join(", ", matchingSpritesheetData.Select(d => d.dataFilePath));
 
-                Debug.LogError($"Multiple .ssdata files reference asset at {imageAssetPath}.");
-                Debug.LogError($"Data file paths: {allPaths}");
+                Log($"Multiple .ssdata files reference asset at {imageAssetPath}.", LogLevel.Error);
+                Log($"Data file paths: {allPaths}", LogLevel.Error);
+
                 throw new InvalidOperationException($"Found multiple data objects referencing asset at {imageAssetPath}");
             }
             else if (matchingSpritesheetData.Count == 1) {
+                Log($"Found a matching spritesheet data file at \"{matchingSpritesheetData[0].dataFilePath}\"", LogLevel.Verbose);
                 return matchingSpritesheetData[0];
             }
             else {
+                Log($"Did not find a matching spritesheet data file for asset", LogLevel.Verbose);
                 return null;
             }
         }
@@ -346,14 +397,6 @@ namespace SpritesheetImporter {
             return Path.Combine(Path.GetDirectoryName(data.dataFilePath), path);
         }
 
-        private static SpritesheetData LoadSpritesheetDataFile(string dataFileAssetPath) {
-            string jsonData = File.ReadAllText(dataFileAssetPath);
-            SpritesheetData dataObj = JsonUtility.FromJson<SpritesheetData>(jsonData);
-            dataObj.dataFilePath = dataFileAssetPath;
-
-            return dataObj;
-        }
-
         private static Vector2Int GetTextureSize(TextureImporter importer) {
             // TextureImporter doesn't expose this information so we have to use reflection
             // From https://github.com/theloneplant/blender-spritesheets/blob/master/unity-importer/Assets/Scripts/Editor/TextureImporterExtension.cs
@@ -364,6 +407,34 @@ namespace SpritesheetImporter {
                 x = (int) outputs[0],
                 y = (int) outputs[1],
             };
+        }
+
+        private static SpritesheetData LoadSpritesheetDataFile(string dataFileAssetPath) {
+            Log($"Attempting to load .ssdata file from path \"{dataFileAssetPath}\"", LogLevel.Verbose);
+
+            string jsonData = File.ReadAllText(dataFileAssetPath);
+            SpritesheetData dataObj = JsonUtility.FromJson<SpritesheetData>(jsonData);
+            dataObj.dataFilePath = dataFileAssetPath;
+
+            return dataObj;
+        }
+
+        private static void Log(string message, LogLevel level) {
+            if (!SpritesheetImporterSettings.logLevel.value.Includes(level)) {
+                return;
+            }
+
+            message = "[Spritesheet Importer] " + message;
+
+            if (level == LogLevel.Error) {
+                Debug.LogError(message);
+            }
+            else if (level == LogLevel.Warning) {
+                Debug.LogWarning(message);
+            }
+            else {
+                Debug.Log(message);
+            }
         }
 
         #region Data classes
