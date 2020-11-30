@@ -169,13 +169,24 @@ namespace SpritesheetImporter {
                     string assetDirectory = Path.GetDirectoryName(mainImageAssetPath);
                     UnityEngine.Object[] sprites = AssetDatabase.LoadAllAssetRepresentationsAtPath(mainImageAssetPath);
 
-                    // Only include rotation in name if there are multiple different rotations in the file, for simplicity
-                    bool includeRotationInName = spritesheetData.animations.Select(anim => anim.rotation).Distinct().Count() > 1;
-
                     foreach (var animationData in spritesheetData.animations) {
-                        string rotation = includeRotationInName ? "_rot" + animationData.rotation.ToString().PadLeft(3, '0') : "";
+                        bool multipleAnimationsFromSameSource = spritesheetData.animations.Where(anim => anim.name == animationData.name).Count() > 1;
+
+                        // Only include rotation in name if needed to disambiguate
+                        string rotation = multipleAnimationsFromSameSource ? "_rot" + animationData.rotation.ToString().PadLeft(3, '0') : "";
                         string clipName = FormatAssetName(spritesheetData.baseObjectName + "_" + animationData.name + rotation + ".anim");
-                        string clipPath = Path.Combine(assetDirectory, clipName);
+
+                        string clipPath = assetDirectory;
+                        if (multipleAnimationsFromSameSource && SpritesheetImporterSettings.placeAnimationsInSubfolders) {
+                            string subfolderName = SpritesheetImporterSettings.animationSubfolderNameFormat.value
+                                .Replace("{anim}", FormatAssetName(animationData.name))
+                                .Replace("{obj}", FormatAssetName(spritesheetData.baseObjectName));
+
+                            clipPath = Path.Combine(clipPath, subfolderName);
+                            Directory.CreateDirectory(clipPath);
+                        }
+
+                        clipPath = Path.Combine(clipPath, clipName);
 
                         AnimationClip clip = CreateAnimationClip(spritesheetData, animationData, sprites);
                         AssetDatabase.CreateAsset(clip, clipPath);
@@ -312,7 +323,11 @@ namespace SpritesheetImporter {
         }
 
         private static string FormatAssetName(string name) {
-            return name.Replace(' ', '_').ToLower();
+            if (!SpritesheetImporterSettings.formatFileNames) {
+                return name;
+            }
+
+            return name.Replace(' ', '_').Replace('-', '_').ToLower();
         }
 
         private static string GetMainImagePath(SpritesheetData data) {

@@ -1,6 +1,6 @@
 {
   "name": "com.chrishayesmu.spritesheet-importer",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "displayName": "Spritesheet Importer",
   "description": "An automated spritesheet importer, for use with images exported by https://github.com/chrishayesmu/Blender-Spritesheet-Renderer",
   "dependencies": {

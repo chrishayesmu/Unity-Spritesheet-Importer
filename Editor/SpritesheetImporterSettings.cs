@@ -18,6 +18,24 @@ namespace SpritesheetImporter {
         [UserSetting("Animations", "Create Animations", createAnimationsTooltip)]
         public static readonly UserSetting<bool> createAnimations = new UserSetting<bool>(SpritesheetImporterSettingsManager.Instance, "createAnimations", true, SettingsScope.Project);
 
+        private const string placeAnimationsInSubfoldersTooltip =
+            "If true, whenever multiple animation clips are created based on the same source animation, a subfolder will be created to hold those animations together. This can "
+          + "be helpful to maintain an organized asset hierarchy.\n\n"
+          + "For example, if you have an animation 'walk' which is rendered from 8 different angles, then a subfolder named 'walk' will be created and all 8 animations "
+          + "will be placed in it. Subfolders are always relative to the directory where the .ssdata and image files are at.\n\n"
+          + "No subfolder will be created with only a single animation in it.";
+
+        [UserSetting("Animations", "Group Animations In Subfolders", placeAnimationsInSubfoldersTooltip)]
+        public static readonly UserSetting<bool> placeAnimationsInSubfolders = new UserSetting<bool>(SpritesheetImporterSettingsManager.Instance, "placeAnimationsInSubfolders", true, SettingsScope.Project);
+
+        private const string animationSubfolderNameFormatTooltip =
+            "Format string when creating subfolders.\n\n"
+          + "* The string '{anim}' will be replaced by the animation name.\n"
+          + "* The string '{obj}' will be replaced by the object name.";
+
+        [UserSetting("Animations", "Subfolder Name Format", animationSubfolderNameFormatTooltip)]
+        public static readonly UserSetting<string> animationSubfolderNameFormat = new UserSetting<string>(SpritesheetImporterSettingsManager.Instance, "animationSubfolderNameFormat", "Animation - {anim}", SettingsScope.Project);
+
 #if SECONDARY_TEXTURES_AVAILABLE
         private const string sliceSecondaryTexturesTooltip =
             "If true, secondary textures will be sliced into individual sprites in the same way as the main image texture.\n\n"
@@ -46,6 +64,11 @@ namespace SpritesheetImporter {
         [UserSetting("Textures", "Slice Unidentified Textures", sliceUnidentifiedTexturesTooltip)]
         public static readonly UserSetting<bool> sliceUnidentifiedTextures = new UserSetting<bool>(SpritesheetImporterSettingsManager.Instance, "sliceUnidentifiedTextures", true, SettingsScope.Project);
 
+        private const string formatFileNamesTooltip =
+            "Whether to apply some simple formatting to file names for sprites, animations, and directories, such as removing spaces.";
+
+        [UserSetting("Miscellaneous", "Format File Names", formatFileNamesTooltip)]
+        public static readonly UserSetting<bool> formatFileNames = new UserSetting<bool>(SpritesheetImporterSettingsManager.Instance, "formatFileNames", true, SettingsScope.Project);
     }
 
 }
