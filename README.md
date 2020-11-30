@@ -20,6 +20,8 @@ Simply import your spritesheet asset to your Unity project alongside the JSON fi
 
 Note that any `.ssdata` file **must** be located in the same directory as the images it is associated with, or import will fail.
 
+> :bulb: If you're going to be working with 2D animations a lot, you may wish to check out the free asset [Sprite Animation Preview](https://assetstore.unity.com/packages/tools/utilities/sprite-animation-preview-37611) on the Asset Store. I have found it very useful in testing this importer and in developing my own game, though in Unity 2020.1 it does seem to cause the occasional NullReferenceException.
+
 ## Functionality
 
 This package simply adds an [AssetPostprocessor](https://docs.unity3d.com/ScriptReference/AssetPostprocessor.html) which watches for changes to [Texture2D](https://docs.unity3d.com/ScriptReference/Texture2D.html) assets, and assets ending in the extension `.ssdata`. This extension, meaning "spritesheet data", is a JSON format output by the Blender addon that describes how to parse a spritesheet. Whenever a change occurs to a supported asset, the AssetPostprocessor will:
@@ -27,8 +29,6 @@ This package simply adds an [AssetPostprocessor](https://docs.unity3d.com/Script
 * Slice the primary image (and optionally, other images) into individual sprites.
 * Associate any [secondary textures](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@7.0/manual/SecondaryTextures.html) with the primary image texture (currently Unity only supports Mask and Normal textures) - note that secondary textures are not supported in all render pipelines!
 * Create [AnimationClips](https://docs.unity3d.com/ScriptReference/AnimationClip.html) based on the animation data in the `.ssdata` file.
-
-
 
 ## Configuration
 
