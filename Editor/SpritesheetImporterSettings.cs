@@ -25,6 +25,7 @@ namespace SpritesheetImporter {
 
     internal static class SpritesheetImporterSettings {
 
+        #region Animation settings
         private const string createAnimationsTooltip =
             "Whether to automatically create animations when importing. If you turn this on, you will need to manually trigger a reimport of any assets which were imported while it was off.";
 
@@ -48,6 +49,13 @@ namespace SpritesheetImporter {
 
         [UserSetting("Animations", "Subfolder Name Format", animationSubfolderNameFormatTooltip)]
         public static readonly UserSetting<string> animationSubfolderNameFormat = new UserSetting<string>(SpritesheetImporterSettingsManager.Instance, "animationSubfolderNameFormat", "Animation - {anim}", SettingsScope.Project);
+        #endregion
+
+        #region Texture settings
+        private const string spritePivotTooltip = "Where the pivot point should be for each sprite.";
+
+        [UserSetting("Textures", "Default Sprite Pivot", sliceUnidentifiedTexturesTooltip)]
+        public static readonly UserSetting<SpriteAlignment> spritePivot = new UserSetting<SpriteAlignment>(SpritesheetImporterSettingsManager.Instance, "spritePivot", SpriteAlignment.Center, SettingsScope.Project);
 
 #if SECONDARY_TEXTURES_AVAILABLE
         private const string sliceSecondaryTexturesTooltip =
@@ -79,7 +87,9 @@ namespace SpritesheetImporter {
 
         private const string formatFileNamesTooltip =
             "Whether to apply some simple formatting to file names for sprites, animations, and directories, such as removing spaces.";
+        #endregion
 
+        #region Miscellaneous settings
         [UserSetting("Miscellaneous", "Format File Names", formatFileNamesTooltip)]
         public static readonly UserSetting<bool> formatFileNames = new UserSetting<bool>(SpritesheetImporterSettingsManager.Instance, "formatFileNames", true, SettingsScope.Project);
 
@@ -92,6 +102,7 @@ namespace SpritesheetImporter {
 
         [UserSetting("Miscellaneous", "Log Level", logLevelTooltip)]
         public static readonly UserSetting<LogLevel> logLevel = new UserSetting<LogLevel>(SpritesheetImporterSettingsManager.Instance, "logLevel", LogLevel.Warning, SettingsScope.Project);
+        #endregion
     }
 
 }

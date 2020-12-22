@@ -12,6 +12,18 @@ using UnityEditor;
 using UnityEngine;
 
 namespace SpritesheetImporter {
+    internal enum PivotPosition {
+        UpperLeft,
+        UpperCenter,
+        UpperRight,
+        CenterLeft,
+        Center,
+        CenterRight,
+        LowerLeft,
+        LowerCenter,
+        LowerRight
+    }
+
     internal class SpritesheetDataPostprocessor : AssetPostprocessor {
         void OnPreprocessTexture() {
             // During OnPreprocessTexture, we just slice the spritesheet into individual sprites based on the JSON data.
@@ -311,10 +323,9 @@ namespace SpritesheetImporter {
             Log($"Frame {frame} ({name}) is in row {row} and column {column} (Unity coordinates); its subrect is {spriteRect}", LogLevel.Verbose);
 
             return new SpriteMetaData() {
-                alignment = (int) SpriteAlignment.Center,
+                alignment = (int) SpritesheetImporterSettings.spritePivot.GetValue(),
                 border = Vector4.zero,
                 name = name,
-                pivot = 0.5f * Vector2.one,
                 rect = spriteRect
             };
         }
@@ -395,6 +406,30 @@ namespace SpritesheetImporter {
 
             // Image file paths are all relative to the data file; make them absolute
             return Path.Combine(Path.GetDirectoryName(data.dataFilePath), path);
+        }
+
+        private static Vector2 GetPivotPosition(PivotPosition position) {
+            switch (position) {
+                case PivotPosition.UpperLeft:
+                    return new Vector2(0.0f, 1.0f);
+                case PivotPosition.UpperCenter:
+                    return new Vector2(0.5f, 1.0f);
+                case PivotPosition.UpperRight:
+                    return new Vector2(1.0f, 1.0f);
+                case PivotPosition.CenterLeft:
+                    return new Vector2(0.0f, 0.5f);
+                case PivotPosition.Center:
+                    return new Vector2(0.5f, 0.5f);
+                case PivotPosition.CenterRight:
+                    return new Vector2(1.0f, 0.5f);
+                case PivotPosition.LowerLeft:
+                    return new Vector2(0.0f, 0.0f);
+                case PivotPosition.LowerCenter:
+                    return new Vector2(0.5f, 0.0f);
+                case PivotPosition.LowerRight:
+                default:
+                    return new Vector2(1.0f, 0.0f);
+            }
         }
 
         private static Vector2Int GetTextureSize(TextureImporter importer) {
