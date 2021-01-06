@@ -12,81 +12,16 @@ using UnityEditor;
 using UnityEngine;
 
 namespace SpritesheetImporter {
-    internal enum PivotPosition {
-        UpperLeft,
-        UpperCenter,
-        UpperRight,
-        CenterLeft,
-        Center,
-        CenterRight,
-        LowerLeft,
-        LowerCenter,
-        LowerRight
-    }
 
     internal class SpritesheetDataPostprocessor : AssetPostprocessor {
-        void OnPreprocessTexture() {
-            // During OnPreprocessTexture, we just slice the spritesheet into individual sprites based on the JSON data.
-            // Other steps, such as creating animations or configuring secondary textures, occur in OnPostprocessAllAssets.
-            SpritesheetData data = FindSpritesheetData(assetPath);
-
-            if (data == null) {
-                Log($"Asset path \"{assetPath}\" is not referenced by any .ssdata file in the same directory", LogLevel.Verbose);
-                return;
-            }
-
-            // Check what type of image this is and whether we want to slice it or not
-            string assetFileName = Path.GetFileName(assetPath);
-            SpritesheetMaterialData material = data.materialData.Where(mat => mat.file == assetFileName).SingleOrDefault();
-
-            if (material != null) {
-                if (!SpritesheetImporterSettings.sliceSecondaryTextures && material.IsSecondaryTexture) {
-                    Log($"Asset \"{assetPath}\" is a secondary texture and slicing of secondary textures is disabled; no action taken", LogLevel.Verbose);
-                    return;
-                }
-
-                if (!SpritesheetImporterSettings.sliceUnidentifiedTextures && material.IsUnidentifiedTexture) {
-                    Log($"Asset \"{assetPath}\" is an unidentified texture and slicing of unidentified textures is disabled; no action taken", LogLevel.Verbose);
-                    return;
-                }
-            }
-
-            TextureImporter importer = assetImporter as TextureImporter;
-            Vector2Int textureSize = GetTextureSize(importer);
-
-            List<SpriteMetaData> subsprites = new List<SpriteMetaData>();
-
-            foreach (SpritesheetStillData still in data.stills) {
-                string name = data.baseObjectName + "_" + still.frame;
-                Log($"Creating sprite still for frame {still.frame} with sprite name {name}", LogLevel.Verbose);
-                subsprites.Add(CreateSpriteMetaData(still.frame, data, FormatAssetName(name)));
-            }
-
-            foreach (SpritesheetAnimationData animation in data.animations) {
-                for (int i = animation.startFrame; i < animation.startFrame + animation.numFrames; i++) {
-                    string name = data.baseObjectName + "_" + animation.name + "_rot" + animation.rotation + "_" + (i - animation.startFrame);
-                    Log($"Creating sprite slice for animation frame {i} with sprite name {name}", LogLevel.Verbose);
-                    subsprites.Add(CreateSpriteMetaData(i, data, FormatAssetName(name)));
-                }
-            }
-
-            Log($"Asset \"{assetPath}\" has been sliced into {subsprites.Count} sprites", LogLevel.Info);
-
-            if (subsprites.Count > 1) {
-                importer.spriteImportMode = SpriteImportMode.Multiple;
-                importer.spritesheet = subsprites.ToArray();
-            }
-        }
-
         static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths) {
-            if (SpritesheetImporterSettings.placeAnimationsInSubfolders && string.IsNullOrWhiteSpace(SpritesheetImporterSettings.animationSubfolderNameFormat)) {
-                Log("Unable to process assets because the \"Subfolder Name Format\" project setting is blank", LogLevel.Error);
-                return;
-            }
-
             List<string> processedSpritesheets = new List<string>();
 
-            foreach (string assetPath in importedAssets) {
+            var assets = importedAssets.Concat(movedAssets).ToList();
+
+            foreach (string inputAssetPath in assets) {
+                string assetPath = inputAssetPath.Replace('/', '\\');
+
                 SpritesheetData spritesheetData;
 
                 #region Find and load spritesheet data file
@@ -105,18 +40,24 @@ namespace SpritesheetImporter {
                 }
                 #endregion
 
-                // When loading in several images that represent a texture and its secondary textures, we want to avoid
-                // repeating work, so we only process each spritesheet data file once per import
                 if (spritesheetData == null) {
                     continue;
                 }
 
+                var spritesheetImporter = AssetImporter.GetAtPath(spritesheetData.dataFilePath) as SpritesheetDataImporter;
+
+                // When loading in several images that represent a texture and its secondary textures, we want to avoid
+                // repeating work, so we only process each spritesheet data file once per import
                 if (processedSpritesheets.Contains(spritesheetData.dataFilePath)) {
                     Log($"Spritesheet at path \"{spritesheetData.dataFilePath} has already been processed in this import operation; skipping", LogLevel.Verbose);
                     continue;
                 }
 
+                processedSpritesheets.Add(spritesheetData.dataFilePath);
+
                 string successMessage = $"Import of assets referenced in \"{spritesheetData.dataFilePath}\" completed successfully. ";
+
+                SliceSpritesheets(spritesheetData, spritesheetImporter);
 
                 #region Set up secondary textures
 #if SECONDARY_TEXTURES_AVAILABLE
@@ -201,7 +142,7 @@ namespace SpritesheetImporter {
                 #endregion
 
                 #region Create/update animations
-                if (SpritesheetImporterSettings.createAnimations && spritesheetData.animations.Count > 0) {
+                if (spritesheetImporter.createAnimations && spritesheetData.animations.Count > 0) {
                     Log($"Going to create or replace {spritesheetData.animations.Count} animation clips for data file at \"{spritesheetData.dataFilePath}\"", LogLevel.Verbose);
 
                     string mainImageAssetPath = GetMainImagePath(spritesheetData);
@@ -218,7 +159,7 @@ namespace SpritesheetImporter {
                         string clipName = FormatAssetName(spritesheetData.baseObjectName + "_" + animationData.name + rotation + ".anim");
 
                         string clipPath = assetDirectory;
-                        if (multipleAnimationsFromSameSource && SpritesheetImporterSettings.placeAnimationsInSubfolders) {
+                        if (multipleAnimationsFromSameSource && spritesheetImporter.placeAnimationsInSubfolders) {
                             string subfolderName = SpritesheetImporterSettings.animationSubfolderNameFormat.value
                                 .Replace("{anim}", FormatAssetName(animationData.name))
                                 .Replace("{obj}", FormatAssetName(spritesheetData.baseObjectName));
@@ -310,7 +251,7 @@ namespace SpritesheetImporter {
         }
 #endif
 
-        private static SpriteMetaData CreateSpriteMetaData(int frame, SpritesheetData data, string name) {
+        private static SpriteMetaData CreateSpriteMetaData(int frame, SpritesheetData data, string name, TextureImporter textureImporter, SpritesheetDataImporter spritesheetImporter, Texture2D texture) {
             // Our spritesheets and Unity's sprite coordinate system are both row-major; however, Unity's origin is in the bottom left
             // of the texture, and ours is in the top left. We just have to do a small transformation to match.
             int row = data.numRows - frame / data.numColumns - 1;
@@ -322,12 +263,39 @@ namespace SpritesheetImporter {
 
             Log($"Frame {frame} ({name}) is in row {row} and column {column} (Unity coordinates); its subrect is {spriteRect}", LogLevel.Verbose);
 
-            return new SpriteMetaData() {
-                alignment = (int) SpritesheetImporterSettings.spritePivot.GetValue(),
+            if (spritesheetImporter.trimIndividualSprites) {
+                RectInt trimmedRect = texture.GetTrimRegion(spriteRect.ToRectInt());
+                Log($"Trimmed sprite rect from {spriteRect} to {trimmedRect}", LogLevel.Verbose);
+
+                spriteRect = trimmedRect.ToRect();
+            }
+
+            var metadata = new SpriteMetaData() {
+                alignment = (int) spritesheetImporter.spritePivot,
                 border = Vector4.zero,
                 name = name,
                 rect = spriteRect
             };
+
+            if (spritesheetImporter.spritePivot == SpriteAlignment.Custom) {
+                metadata.pivot = FindCustomPivotPoint(metadata, textureImporter, spritesheetImporter);
+            }
+
+            return metadata;
+        }
+
+        private static Vector2 FindCustomPivotPoint(SpriteMetaData sprite, TextureImporter importer, SpritesheetDataImporter spritesheetImporter) {
+            if (spritesheetImporter.customPivotMode == CustomPivotMode.Tilemap) {
+                float pixelsPerUnit = importer.spritePixelsPerUnit;
+
+                float x = pixelsPerUnit / sprite.rect.width;
+                float y = pixelsPerUnit / sprite.rect.height;
+
+                return new Vector2(0.5f, y / 2);
+            }
+            else {
+                throw new Exception($"Unknown customPivotMode value {spritesheetImporter.customPivotMode}");
+            }
         }
 
         /// <summary>
@@ -408,30 +376,6 @@ namespace SpritesheetImporter {
             return Path.Combine(Path.GetDirectoryName(data.dataFilePath), path);
         }
 
-        private static Vector2 GetPivotPosition(PivotPosition position) {
-            switch (position) {
-                case PivotPosition.UpperLeft:
-                    return new Vector2(0.0f, 1.0f);
-                case PivotPosition.UpperCenter:
-                    return new Vector2(0.5f, 1.0f);
-                case PivotPosition.UpperRight:
-                    return new Vector2(1.0f, 1.0f);
-                case PivotPosition.CenterLeft:
-                    return new Vector2(0.0f, 0.5f);
-                case PivotPosition.Center:
-                    return new Vector2(0.5f, 0.5f);
-                case PivotPosition.CenterRight:
-                    return new Vector2(1.0f, 0.5f);
-                case PivotPosition.LowerLeft:
-                    return new Vector2(0.0f, 0.0f);
-                case PivotPosition.LowerCenter:
-                    return new Vector2(0.5f, 0.0f);
-                case PivotPosition.LowerRight:
-                default:
-                    return new Vector2(1.0f, 0.0f);
-            }
-        }
-
         private static Vector2Int GetTextureSize(TextureImporter importer) {
             // TextureImporter doesn't expose this information so we have to use reflection
             // From https://github.com/theloneplant/blender-spritesheets/blob/master/unity-importer/Assets/Scripts/Editor/TextureImporterExtension.cs
@@ -447,8 +391,14 @@ namespace SpritesheetImporter {
         private static SpritesheetData LoadSpritesheetDataFile(string dataFileAssetPath) {
             Log($"Attempting to load .ssdata file from path \"{dataFileAssetPath}\"", LogLevel.Verbose);
 
+            SpritesheetData dataObj = AssetDatabase.LoadAssetAtPath<SpritesheetData>(dataFileAssetPath);
+
+            if (dataObj != null) {
+                return dataObj;
+            }
+
             string jsonData = File.ReadAllText(dataFileAssetPath);
-            SpritesheetData dataObj = JsonUtility.FromJson<SpritesheetData>(jsonData);
+            dataObj = JsonUtility.FromJson<SpritesheetData>(jsonData);
             dataObj.dataFilePath = dataFileAssetPath;
 
             return dataObj;
@@ -472,77 +422,94 @@ namespace SpritesheetImporter {
             }
         }
 
-        #region Data classes
-        // All of the data classes have their fields assigned to default because otherwise older versions
-        // of Unity will fill up the debug window with useless warnings
-        [Serializable]
-        public class SpritesheetData {
-            public string dataFilePath = default; // Not from JSON; filled in manually
+        private static void SliceSpritesheets(SpritesheetData data, SpritesheetDataImporter spritesheetImporter) {
+            string assetDirectory = Path.GetDirectoryName(data.dataFilePath);
+            List<string> textures = new List<string>();
 
-            public string baseObjectName = default;
-            public string imageFile = default;
+            if (!string.IsNullOrEmpty(data.imageFile)) {
+                textures.Add(data.imageFile);
+            }
 
-            public int spriteWidth = default;
-            public int spriteHeight = default;
+            if (data.materialData != null) {
+                foreach (var material in data.materialData) {
+                    if (!spritesheetImporter.sliceSecondaryTextures && material.IsSecondaryTexture) {
+                        Log($"Asset \"{material.file}\" is a secondary texture and slicing of secondary textures is disabled; no action taken", LogLevel.Verbose);
+                        continue;
+                    }
 
-            public int paddingWidth = default;
-            public int paddingHeight = default;
+                    if (!spritesheetImporter.sliceUnidentifiedTextures && material.IsUnidentifiedTexture) {
+                        Log($"Asset \"{material.file}\" is an unidentified texture and slicing of unidentified textures is disabled; no action taken", LogLevel.Verbose);
+                        continue;
+                    }
 
-            public int numColumns = default;
-            public int numRows = default;
+                    textures.Add(material.file);
+                }
+            }
 
-            public List<SpritesheetAnimationData> animations = default;
-            public List<SpritesheetMaterialData> materialData = default;
-            public List<SpritesheetStillData> stills = default;
+            foreach (string texturePath in textures) {
+                string assetPath = Path.Combine(assetDirectory, texturePath);
+                SliceTexture(data, assetPath, applyChanges: false);
+            }
         }
 
-        [Serializable]
-        public class SpritesheetAnimationData {
-            public int frameRate = default;
-            public string name = default;
-            public int numFrames = default;
-            public float rotation = default;
-            public int startFrame = default;
-        }
+        private static void SliceTexture(SpritesheetData data, string assetPath, bool applyChanges) {
+            TextureImporter textureImporter = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+            SpritesheetDataImporter spritesheetImporter = AssetImporter.GetAtPath(data.dataFilePath) as SpritesheetDataImporter;
+            Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath).ReadableView();
+            Vector2Int textureSize = GetTextureSize(textureImporter);
 
-        [Serializable]
-        public class SpritesheetMaterialData {
-            public string name = default;
-            public string file = default;
-            public string role = default;
+            var existingSprites = textureImporter.spritesheet;
+            List<SpriteMetaData> newSprites = new List<SpriteMetaData>();
 
-            public MaterialRole MaterialRole {
-                get {
-                    switch (role) {
-                        case "albedo":
-                            return MaterialRole.Albedo;
-                        case "mask_unity":
-                            return MaterialRole.Mask;
-                        case "normal_unity":
-                            return MaterialRole.Normal;
-                        default:
-                            return MaterialRole.UnassignedOrUnrecognized;
+            foreach (SpritesheetStillData still in data.stills) {
+                string name = data.baseObjectName + "_" + still.frame;
+                Log($"Creating sprite still for frame {still.frame} with sprite name {name}", LogLevel.Verbose);
+                newSprites.Add(CreateSpriteMetaData(still.frame, data, FormatAssetName(name), textureImporter, spritesheetImporter, texture));
+            }
+
+            foreach (SpritesheetAnimationData animation in data.animations) {
+                for (int i = animation.startFrame; i < animation.startFrame + animation.numFrames; i++) {
+                    string name = data.baseObjectName + "_" + animation.name + "_rot" + animation.rotation + "_" + (i - animation.startFrame);
+                    Log($"Creating sprite slice for animation frame {i} with sprite name {name}", LogLevel.Verbose);
+                    newSprites.Add(CreateSpriteMetaData(i, data, FormatAssetName(name), textureImporter, spritesheetImporter, texture));
+                }
+            }
+
+            Log($"Asset \"{assetPath}\" has been sliced into {newSprites.Count} sprites", LogLevel.Info);
+
+            // Even if there's only one sprite, we import in Multiple mode, both for consistency
+            // and so that we can apply trimming to that sprite
+            bool importSettingsChanged = textureImporter.spriteImportMode != SpriteImportMode.Multiple;
+
+            if (newSprites.Count != existingSprites.Length) {
+                importSettingsChanged = true;
+            }
+            else {
+                // Check each individual sprite to look for changes
+                for (int i = 0; i < newSprites.Count; i++) {
+                    var newSprite = newSprites[i];
+                    var oldSprite = existingSprites[i];
+
+                    if (!newSprite.Equals(oldSprite)) {
+                        importSettingsChanged = true;
+                        break;
                     }
                 }
             }
 
-            public bool IsSecondaryTexture => MaterialRole == MaterialRole.Mask || MaterialRole == MaterialRole.Normal;
+            if (importSettingsChanged) {
+                Log($"Asset at \"{assetPath}\" will be re-imported due to new import settings", LogLevel.Verbose);
+                var newAsArray = newSprites.ToArray();
 
-            public bool IsUnidentifiedTexture => MaterialRole == MaterialRole.UnassignedOrUnrecognized;
-        }
+                textureImporter.spriteImportMode = SpriteImportMode.Multiple;
+                textureImporter.spritesheet = newAsArray;
 
-        public enum MaterialRole {
-            Albedo,
-            Mask,
-            Normal,
-            UnassignedOrUnrecognized
+                EditorUtility.SetDirty(textureImporter); // For some reason the importer is too dumb to notice it has a new spritesheet
+                textureImporter.SaveAndReimport();
+            }
+            else {
+                Log($"Asset at \"{assetPath}\" was already sliced correctly; not flagging for re-import", LogLevel.Verbose);
+            }
         }
-
-        [Serializable]
-        public class SpritesheetStillData {
-            public int frame = default;
-            public float rotation = default;
-        }
-        #endregion
     }
 }
