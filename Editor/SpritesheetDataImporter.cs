@@ -22,6 +22,11 @@ namespace SpritesheetImporter {
         [Tooltip("If set, empty space will be trimmed from each sprite individually when slicing textures.")]
         public bool trimIndividualSprites;
 
+        [Range(0.0f, 1.0f)]
+        [ShowWhen(OtherPropertyPath = nameof(trimIndividualSprites), OtherPropertyValue = true)]
+        [Tooltip("Pixels with an alpha value equal or less than this will be considered empty when trimming sprites.")]
+        public float trimAlphaThreshold;
+
         [Tooltip("Whether secondary textures should be sliced into sprites. This is generally not needed for built-in Unity functionality.")]
         public bool sliceSecondaryTextures;
 
@@ -31,8 +36,8 @@ namespace SpritesheetImporter {
         [Tooltip("Where the pivot for individual sprites should be placed when slicing.")]
         public SpriteAlignment spritePivot;
 
-        [Tooltip("How to determine the custom pivot point.")]
         [ShowWhen(OtherPropertyPath = nameof(spritePivot), OtherPropertyValue = SpriteAlignment.Custom)]
+        [Tooltip("How to determine the custom pivot point.")]
         public CustomPivotMode customPivotMode;
 
         [SerializeField] [HideInInspector] private int lastImporterVersion = -1;
@@ -72,6 +77,7 @@ namespace SpritesheetImporter {
                 sliceSecondaryTextures = SpritesheetImporterSettings.sliceSecondaryTextures;
                 sliceUnidentifiedTextures = SpritesheetImporterSettings.sliceUnidentifiedTextures;
                 spritePivot = SpritesheetImporterSettings.spritePivot;
+                trimAlphaThreshold = SpritesheetImporterSettings.trimAlphaThreshold;
                 trimIndividualSprites = SpritesheetImporterSettings.trimSprites;
             }
 

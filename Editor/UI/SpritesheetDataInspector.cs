@@ -114,7 +114,7 @@ namespace SpritesheetImporter {
             Hash128 hash = texture.imageContentsHash;
 
             if (!trimmedTextureCache.ContainsKey(hash)) {
-                trimmedTextureCache[hash] = texture.TrimmedCopy();
+                trimmedTextureCache[hash] = texture.TrimmedCopy(0.0f);
             }
 
             return trimmedTextureCache[hash];

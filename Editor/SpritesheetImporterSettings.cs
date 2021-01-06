@@ -76,8 +76,13 @@ namespace SpritesheetImporter {
 
         private const string trimSpritesTooltip = "Whether sprites should be trimmed (have all rows/columns of solely transparent pixels removed from their exteriors) after being sliced.";
 
-        [UserSetting("Default Import Settings - Slicing", "Trim Sprites", sliceUnidentifiedTexturesTooltip)]
+        [UserSetting("Default Import Settings - Slicing", "Trim Sprites", trimSpritesTooltip)]
         public static readonly UserSetting<bool> trimSprites = new UserSetting<bool>(SpritesheetImporterSettingsManager.Instance, "trimSprites", true, SettingsScope.Project);
+
+        private const string trimAlphaThresholdTooltip = "When trimming sprites, pixels with an alpha less than or equal to this value will be treated as empty.";
+
+        [UserSetting("Default Import Settings - Slicing", "Trim Alpha Threshold", trimAlphaThresholdTooltip)]
+        public static readonly UserSetting<float> trimAlphaThreshold = new UserSetting<float>(SpritesheetImporterSettingsManager.Instance, "trimAlphaThreshold", 0.0f, SettingsScope.Project);
 
         private const string spritePivotTooltip = "Where the pivot point should be for each sprite.";
 

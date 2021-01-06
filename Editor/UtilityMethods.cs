@@ -43,8 +43,8 @@ namespace SpritesheetImporter {
             return readableCopy;
         }
 
-        public static Texture2D TrimmedCopy(this Texture2D texture, RectInt? cropArea = null) {
-            RectInt subarea = texture.GetTrimRegion(cropArea);
+        public static Texture2D TrimmedCopy(this Texture2D texture, float alphaThreshold, RectInt? cropArea = null) {
+            RectInt subarea = texture.GetTrimRegion(alphaThreshold, cropArea);
 
             var subareaPixels = texture.GetPixels(subarea.xMin, subarea.yMin, subarea.width, subarea.height);
 
@@ -55,7 +55,8 @@ namespace SpritesheetImporter {
             return subtexture;
         }
 
-        public static RectInt GetTrimRegion(this Texture2D texture, RectInt? cropArea = null) {
+        public static RectInt GetTrimRegion(this Texture2D texture, float alphaThreshold, RectInt? cropArea = null) {
+            Debug.Assert(alphaThreshold >= 0.0f && alphaThreshold <= 1.0f, $"alphaThreshold out of range [0, 1]: {alphaThreshold}");
             Color[] pixels = texture.GetPixels();
 
             int bottomRow = 0;
@@ -77,7 +78,7 @@ namespace SpritesheetImporter {
                 for (int col = leftCol; col <= rightCol; col++) {
                     Color pixel = pixels[row * texture.width + col];
 
-                    if (pixel.a > 0.0f) {
+                    if (pixel.a > alphaThreshold) {
                         isRowEmpty = false;
                         break;
                     }
@@ -96,7 +97,7 @@ namespace SpritesheetImporter {
                 for (int col = leftCol; col <= rightCol; col++) {
                     Color pixel = pixels[row * texture.width + col];
 
-                    if (pixel.a > 0.0f) {
+                    if (pixel.a > alphaThreshold) {
                         isRowEmpty = false;
                         break;
                     }
@@ -115,7 +116,7 @@ namespace SpritesheetImporter {
                 for (int row = bottomRow; row <= topRow; row++) {
                     Color pixel = pixels[row * texture.width + col];
 
-                    if (pixel.a > 0.0f) {
+                    if (pixel.a > alphaThreshold) {
                         isColumnEmpty = false;
                         break;
                     }
@@ -134,7 +135,7 @@ namespace SpritesheetImporter {
                 for (int row = bottomRow; row < topRow; row++) {
                     Color pixel = pixels[row * texture.width + col];
 
-                    if (pixel.a > 0.0f) {
+                    if (pixel.a > alphaThreshold) {
                         isColumnEmpty = false;
                         break;
                     }

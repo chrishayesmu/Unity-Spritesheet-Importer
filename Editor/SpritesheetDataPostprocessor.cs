@@ -264,7 +264,7 @@ namespace SpritesheetImporter {
             Log($"Frame {frame} ({name}) is in row {row} and column {column} (Unity coordinates); its subrect is {spriteRect}", LogLevel.Verbose);
 
             if (spritesheetImporter.trimIndividualSprites) {
-                RectInt trimmedRect = texture.GetTrimRegion(spriteRect.ToRectInt());
+                RectInt trimmedRect = texture.GetTrimRegion(spritesheetImporter.trimAlphaThreshold, spriteRect.ToRectInt());
                 Log($"Trimmed sprite rect from {spriteRect} to {trimmedRect}", LogLevel.Verbose);
 
                 spriteRect = trimmedRect.ToRect();
