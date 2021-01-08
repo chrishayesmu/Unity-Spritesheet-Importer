@@ -44,7 +44,6 @@ namespace SpritesheetImporter {
                     continue;
                 }
 
-                var spritesheetImporter = AssetImporter.GetAtPath(spritesheetData.dataFilePath) as SpritesheetDataImporter;
 
                 // When loading in several images that represent a texture and its secondary textures, we want to avoid
                 // repeating work, so we only process each spritesheet data file once per import
@@ -54,6 +53,13 @@ namespace SpritesheetImporter {
                 }
 
                 processedSpritesheets.Add(spritesheetData.dataFilePath);
+
+                var spritesheetImporter = AssetImporter.GetAtPath(spritesheetData.dataFilePath) as SpritesheetDataImporter;
+
+                if (spritesheetImporter == null) {
+                    Log($"SpritesheetDataImporter for asset \"{inputAssetPath}\" unavailable; it's probably running later in this import operation", LogLevel.Verbose);
+                    continue;
+                }
 
                 string successMessage = $"Import of assets referenced in \"{spritesheetData.dataFilePath}\" completed successfully. ";
 
@@ -288,10 +294,10 @@ namespace SpritesheetImporter {
             if (spritesheetImporter.customPivotMode == CustomPivotMode.Tilemap) {
                 float pixelsPerUnit = importer.spritePixelsPerUnit;
 
-                float x = pixelsPerUnit / sprite.rect.width;
-                float y = pixelsPerUnit / sprite.rect.height;
+                float x = sprite.rect.width / (pixelsPerUnit * spritesheetImporter.tilemapGridSize.x);
+                float y = sprite.rect.height / (pixelsPerUnit * spritesheetImporter.tilemapGridSize.y);
 
-                return new Vector2(0.5f, y / 2);
+                return new Vector2(1 / (2 * x), 1 / (2 * y));
             }
             else {
                 throw new Exception($"Unknown customPivotMode value {spritesheetImporter.customPivotMode}");

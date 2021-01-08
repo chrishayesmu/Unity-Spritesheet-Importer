@@ -8,7 +8,7 @@ using UnityEngine;
 namespace SpritesheetImporter {
     [ScriptedImporter(1, "ssdata")]
     internal class SpritesheetDataImporter : ScriptedImporter {
-        private const int latestImporterVersion = 1;
+        private const int latestImporterVersion = 2;
 
         [Header("Animations")]
         [Tooltip("Whether to create Animation Clip assets for animations in this spritesheet, if any.")]
@@ -39,6 +39,10 @@ namespace SpritesheetImporter {
         [ShowWhen(OtherPropertyPath = nameof(spritePivot), OtherPropertyValue = SpriteAlignment.Custom)]
         [Tooltip("How to determine the custom pivot point.")]
         public CustomPivotMode customPivotMode;
+
+        [ShowWhen(OtherPropertyPath = nameof(customPivotMode), OtherPropertyValue = CustomPivotMode.Tilemap)]
+        [Tooltip("The size of the tilemap grid the sprites will be used in.")]
+        public Vector2 tilemapGridSize;
 
         [SerializeField] [HideInInspector] private int lastImporterVersion = -1;
 
@@ -79,6 +83,10 @@ namespace SpritesheetImporter {
                 spritePivot = SpritesheetImporterSettings.spritePivot;
                 trimAlphaThreshold = SpritesheetImporterSettings.trimAlphaThreshold;
                 trimIndividualSprites = SpritesheetImporterSettings.trimSprites;
+            }
+
+            if (lastImporterVersion < 2) {
+                tilemapGridSize = SpritesheetImporterSettings.tilemapGridSize;
             }
 
             lastImporterVersion = latestImporterVersion;

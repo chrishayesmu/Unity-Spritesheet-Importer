@@ -93,7 +93,12 @@ namespace SpritesheetImporter {
                                                       "• Tilemap - The pivot will be placed in such a way as to make the sprite fit smoothly into a tilemap grid.";
 
         [UserSetting("Default Import Settings - Slicing", "Custom Pivot Mode", customPivotModeTooltip)]
-        public static readonly UserSetting<CustomPivotMode> customPivotMode = new UserSetting<CustomPivotMode>(SpritesheetImporterSettingsManager.Instance, "ustomPivotMode", CustomPivotMode.Tilemap, SettingsScope.Project);
+        public static readonly UserSetting<CustomPivotMode> customPivotMode = new UserSetting<CustomPivotMode>(SpritesheetImporterSettingsManager.Instance, "customPivotMode", CustomPivotMode.Tilemap, SettingsScope.Project);
+
+        private const string tilemapGridSizeTooltip = "The size of the tilemap grid the sprites will be used in. Used to calculate the pivot point.";
+
+        [UserSetting("Default Import Settings - Tilemaps", "Tilemap Grid Size", tilemapGridSizeTooltip)]
+        public static readonly UserSetting<Vector2> tilemapGridSize = new UserSetting<Vector2>(SpritesheetImporterSettingsManager.Instance, "tilemapGridSize", Vector2.one, SettingsScope.Project);
         #endregion
 
         private const string animationSubfolderNameFormatTooltip =
