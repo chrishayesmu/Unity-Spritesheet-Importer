@@ -258,14 +258,21 @@ namespace SpritesheetImporter {
 #endif
 
         private static SpriteMetaData CreateSpriteMetaData(int frame, SpritesheetData data, string name, TextureImporter textureImporter, SpritesheetDataImporter spritesheetImporter, Texture2D texture) {
+            int rowSubdivisions = spritesheetImporter.subdivideSprites ? spritesheetImporter.subdivisions.y : 1;
+            int columnSubdivisions = spritesheetImporter.subdivideSprites ? spritesheetImporter.subdivisions.x : 1;
+            int numRows = data.numRows * rowSubdivisions;
+            int numColumns = data.numColumns * columnSubdivisions;
+            int columnWidth = data.spriteWidth / columnSubdivisions;
+            int rowHeight = data.spriteHeight / rowSubdivisions;
+
             // Our spritesheets and Unity's sprite coordinate system are both row-major; however, Unity's origin is in the bottom left
             // of the texture, and ours is in the top left. We just have to do a small transformation to match.
-            int row = data.numRows - frame / data.numColumns - 1;
-            int column = frame % data.numColumns;
+            int row = numRows - frame / numColumns - 1;
+            int column = frame % numColumns;
 
             // The input texture might have padding applied, which would be at the right and the bottom. Since our coordinate system
             // and Unity's both start on the left, we don't care about the horizontal padding.
-            Rect spriteRect = new Rect(data.spriteWidth * column, data.paddingHeight + data.spriteHeight * row, data.spriteWidth, data.spriteHeight);
+            Rect spriteRect = new Rect(columnWidth * column, data.paddingHeight + rowHeight * row, columnWidth, rowHeight);
 
             Log($"Frame {frame} ({name}) is in row {row} and column {column} (Unity coordinates); its subrect is {spriteRect}", LogLevel.Verbose);
 
@@ -277,13 +284,13 @@ namespace SpritesheetImporter {
             }
 
             var metadata = new SpriteMetaData() {
-                alignment = (int) spritesheetImporter.spritePivot,
+                alignment = (int) spritesheetImporter.pivotPlacement,
                 border = Vector4.zero,
                 name = name,
                 rect = spriteRect
             };
 
-            if (spritesheetImporter.spritePivot == SpriteAlignment.Custom) {
+            if (spritesheetImporter.pivotPlacement == SpriteAlignment.Custom) {
                 metadata.pivot = FindCustomPivotPoint(metadata, textureImporter, spritesheetImporter);
             }
 
@@ -467,10 +474,17 @@ namespace SpritesheetImporter {
             var existingSprites = textureImporter.spritesheet;
             List<SpriteMetaData> newSprites = new List<SpriteMetaData>();
 
-            foreach (SpritesheetStillData still in data.stills) {
-                string name = data.baseObjectName + "_" + still.frame;
-                Log($"Creating sprite still for frame {still.frame} with sprite name {name}", LogLevel.Verbose);
-                newSprites.Add(CreateSpriteMetaData(still.frame, data, FormatAssetName(name), textureImporter, spritesheetImporter, texture));
+            int numStills = data.stills.Count;
+
+            if (spritesheetImporter.subdivideSprites) {
+                numStills *= spritesheetImporter.subdivisions.x * spritesheetImporter.subdivisions.y;
+            }
+
+            // TODO: might be helpful to name sprites differently if subdivisions are on, to group them by their original undivided sprite
+            for (int i = 0; i < numStills; i++) {
+                string name = data.baseObjectName + "_" + i;
+                Log($"Creating sprite still for frame {i} with sprite name {name}", LogLevel.Verbose);
+                newSprites.Add(CreateSpriteMetaData(i, data, FormatAssetName(name), textureImporter, spritesheetImporter, texture));
             }
 
             foreach (SpritesheetAnimationData animation in data.animations) {

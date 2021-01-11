@@ -22,7 +22,6 @@ namespace SpritesheetImporter {
         [Tooltip("If set, empty space will be trimmed from each sprite individually when slicing textures.")]
         public bool trimIndividualSprites;
 
-        [Range(0.0f, 1.0f)]
         [ShowWhen(OtherPropertyPath = nameof(trimIndividualSprites), OtherPropertyValue = true)]
         [Tooltip("Pixels with an alpha value equal or less than this will be considered empty when trimming sprites.")]
         public float trimAlphaThreshold;
@@ -33,10 +32,18 @@ namespace SpritesheetImporter {
         [Tooltip("Whether textures with an unknown role should be sliced into sprites.")]
         public bool sliceUnidentifiedTextures;
 
-        [Tooltip("Where the pivot for individual sprites should be placed when slicing.")]
-        public SpriteAlignment spritePivot;
+        [Tooltip("Set this to subdivide individual sprites further than the data file states. This is useful if you've rendered one model into a spritesheet, but it should be split into parts.")]
+        public bool subdivideSprites;
 
-        [ShowWhen(OtherPropertyPath = nameof(spritePivot), OtherPropertyValue = SpriteAlignment.Custom)]
+        [ShowWhen(OtherPropertyPath = nameof(subdivideSprites), OtherPropertyValue = true)]
+        [Tooltip("How to subdivide the sprites. This represents how many columns (x) and rows (y) each individual sprite contains. If set to (1, 1), for example, this would result in a single sprite.")]
+        public Vector2Int subdivisions = Vector2Int.one;
+
+        [Header("Sprite Pivots")]
+        [Tooltip("Where the pivot for individual sprites should be placed when slicing.")]
+        public SpriteAlignment pivotPlacement;
+
+        [ShowWhen(OtherPropertyPath = nameof(pivotPlacement), OtherPropertyValue = SpriteAlignment.Custom)]
         [Tooltip("How to determine the custom pivot point.")]
         public CustomPivotMode customPivotMode;
 
@@ -80,7 +87,7 @@ namespace SpritesheetImporter {
                 placeAnimationsInSubfolders = SpritesheetImporterSettings.placeAnimationsInSubfolders;
                 sliceSecondaryTextures = SpritesheetImporterSettings.sliceSecondaryTextures;
                 sliceUnidentifiedTextures = SpritesheetImporterSettings.sliceUnidentifiedTextures;
-                spritePivot = SpritesheetImporterSettings.spritePivot;
+                pivotPlacement = SpritesheetImporterSettings.spritePivot;
                 trimAlphaThreshold = SpritesheetImporterSettings.trimAlphaThreshold;
                 trimIndividualSprites = SpritesheetImporterSettings.trimSprites;
             }

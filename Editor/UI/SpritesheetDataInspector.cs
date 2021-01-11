@@ -4,6 +4,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
+// TODO make a CustomPreview class with options to pick material, animation, etc
 namespace SpritesheetImporter {
     [CustomEditor(typeof(SpritesheetData))]
     internal class SpritesheetDataInspector : Editor {
@@ -30,6 +31,7 @@ namespace SpritesheetImporter {
 
             string assetPath = AssetDatabase.GetAssetPath(target);
             string assetDirectory = Path.GetDirectoryName(assetPath);
+            SpritesheetDataImporter importer = AssetImporter.GetAtPath(assetPath) as SpritesheetDataImporter;
 
             GUIStyle labelStyle = new GUIStyle(EditorStyles.label) {
                 alignment = TextAnchor.MiddleLeft,
@@ -41,9 +43,29 @@ namespace SpritesheetImporter {
                 clipping = TextClipping.Overflow
             };
 
-            EditorGUILayout.LabelField("Sprite Size", $"{data.spriteWidth}x{data.spriteHeight} px");
+            if (importer.subdivideSprites) {
+                // Sprite size
+                int columnWidth = data.spriteWidth / importer.subdivisions.x;
+                int columnRemainder = data.spriteWidth % importer.subdivisions.x;
+                int rowHeight = data.spriteHeight / importer.subdivisions.y;
+                int rowRemainder = data.spriteHeight % importer.subdivisions.y;
+
+                EditorGUILayout.LabelField("Sprite Size", $"{data.spriteWidth}x{data.spriteHeight} px (base)");
+                EditorGUILayout.LabelField(" ", $"{columnWidth}x{rowHeight} px (after subdividing)");
+
+                // Sheet size (# of sprites)
+                int totalColumns = importer.subdivisions.x * data.numColumns;
+                int totalRows = importer.subdivisions.y * data.numRows;
+
+                EditorGUILayout.LabelField("Sheet Size", $"{data.numRows} rows by {data.numColumns} columns (base)");
+                EditorGUILayout.LabelField(" ", $"{totalRows} rows by {totalColumns} columns (after subdividing)");
+            }
+            else {
+                EditorGUILayout.LabelField("Sprite Size", $"{data.spriteWidth}x{data.spriteHeight} px");
+                EditorGUILayout.LabelField("Sheet Size", $"{data.numRows} rows by {data.numColumns} columns");
+            }
+
             EditorGUILayout.LabelField("Image Padding", $"{data.paddingWidth}x{data.paddingHeight} px");
-            EditorGUILayout.LabelField("Sheet Size", $"{data.numRows} rows by {data.numColumns} columns");
 
             #region Show material data
             expandMaterials = EditorGUILayout.BeginFoldoutHeaderGroup(expandMaterials, $"Materials ({data.materialData.Count})");
