@@ -198,7 +198,7 @@ namespace SpritesheetImporter {
                 frameRate = animationData.frameRate
             };
 
-            Log($"Creating animation clip with frame rate {animationData.frameRate} and {animationData.numFrames} total frames", LogLevel.Verbose);
+            Log($"Creating animation clip with frame rate {animationData.frameRate}, frame skip {animationData.frameSkip}, and {animationData.numFrames} total frames", LogLevel.Verbose);
 
             EditorCurveBinding spriteBinding = new EditorCurveBinding {
                 type = typeof(SpriteRenderer),
@@ -209,8 +209,9 @@ namespace SpritesheetImporter {
             var keyframes = new ObjectReferenceKeyframe[animationData.numFrames];
 
             for (int i = 0; i < animationData.numFrames; i++) {
+                int frameNum = i * (animationData.frameSkip + 1);
                 keyframes[i] = new ObjectReferenceKeyframe {
-                    time = ((float) i) / animationData.frameRate,
+                    time = ((float) frameNum) / animationData.frameRate,
                     value = sprites[i + animationData.startFrame]
                 };
             }

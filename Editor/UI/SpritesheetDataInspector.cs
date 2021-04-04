@@ -121,6 +121,7 @@ namespace SpritesheetImporter {
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField("Length", $"{animation.numFrames} frames");
                     EditorGUILayout.LabelField("Frame rate", $"{animation.frameRate} fps");
+                    EditorGUILayout.LabelField("Frame skip", $"{animation.frameSkip}");
                     EditorGUILayout.LabelField("Starting frame", animation.startFrame.ToString());
                     EditorGUI.indentLevel--;
                 }

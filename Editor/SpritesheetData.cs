@@ -29,6 +29,7 @@ public class SpritesheetData: ScriptableObject {
 [Serializable]
 public class SpritesheetAnimationData {
     public int frameRate = default;
+    public int frameSkip = default;
     public string name = default;
     public int numFrames = default;
     public float rotation = default;
