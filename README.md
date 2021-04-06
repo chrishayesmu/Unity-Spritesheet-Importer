@@ -30,11 +30,13 @@ This package simply adds an [AssetPostprocessor](https://docs.unity3d.com/Script
 * Associate any [secondary textures](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@7.0/manual/SecondaryTextures.html) with the primary image texture (currently Unity only supports Mask and Normal textures) - note that secondary textures are not supported in all render pipelines!
 * Create [AnimationClips](https://docs.unity3d.com/ScriptReference/AnimationClip.html) based on the animation data in the `.ssdata` file.
 
+The package also includes an inspector for the `.ssdata` asset and its importer.
+
 ## Configuration
 
-Several configuration options are available under `Edit > Project Settings... > Spritesheet Importer`, including whether to automatically create animation clips, and whether to slice secondary textures. Note that since these are project settings, most version control software will check them in by default, and they will be shared by everyone working on the project.
+Several configuration options are available under `Edit > Project Settings... > Spritesheet Importer`. The majority of configuration  are on the importer itself, so they will be visible in the inspector when you have selected a `.ssdata` file (similar to how you see texture import settings when selecting a texture).
 
-Every option in Project Settings has a detailed tooltip; just hover the setting name to see it.
+Every option has a detailed tooltip; just hover the option name to see it.
 
 ## Supported Unity versions
 

@@ -69,16 +69,6 @@ namespace SpritesheetImporter {
             EditorGUILayout.PropertyField(serializedObject.FindProperty("customPivotMode"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("tilemapGridSize"));
 
-            EditorGUILayout.Space();
-
-            // Functionality
-            var refreshIcon = EditorGUIUtility.IconContent("d_refresh").image;
-            GUIContent buttonContent = new GUIContent(" Reset to Project Defaults", refreshIcon, "Resets many import settings to their defaults found in Project Settings. " +
-                                                                                                 "Not all settings have defaults, so some won't be changed.");
-            if (GUILayout.Button(buttonContent)) {
-                importer.ReloadFromDefaults();
-            }
-
             serializedObject.ApplyModifiedProperties();
             base.ApplyRevertGUI();
         }
