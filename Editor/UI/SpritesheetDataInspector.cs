@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -111,12 +112,18 @@ namespace SpritesheetImporter {
 
                 for (int i = 0; i < data.animations.Count; i++) {
                     var animation = data.animations[i];
+                    bool animationIsPartOfRotationSet = data.animations.Count(a => a.name == animation.name) > 1;
 
                     if (i != 0) {
                         EditorGUILayout.Space();
                     }
 
-                    EditorGUILayout.LabelField($"Animation {i + 1}", animation.name, EditorStyles.boldLabel);
+                    string animationLabel = animation.name;
+                    if (animationIsPartOfRotationSet) {
+                        animationLabel += $" ({(int) animation.rotation}°)";
+                    }
+
+                    EditorGUILayout.LabelField($"Animation {i+1}", animationLabel, EditorStyles.boldLabel);
 
                     EditorGUI.indentLevel++;
                     EditorGUILayout.LabelField("Length", $"{animation.numFrames} frames");
